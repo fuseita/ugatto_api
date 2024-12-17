@@ -1,0 +1,2 @@
+SQLALCHEMY_DATABASE_URI : 'mysql+pymysql://db_username:db_password@DB_domain:DB_port/table_name'
+SQLALCHEMY_TRACK_MODIFICATIONS : False

@@ -1,9 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from os.path import join
+from os import getcwd
+from yaml import full_load
+
+config_path = join(getcwd(), "config.yaml")
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:virgo@127.0.0.1:9020/test'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config.from_file(config_path, load=full_load)
+
 db = SQLAlchemy(app)
 
 
