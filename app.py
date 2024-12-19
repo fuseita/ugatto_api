@@ -168,36 +168,6 @@ def login():
     return jsonify({'message': 'Login successful!'}), 200
 
 
-@app.route('/users', methods=['GET'])
-def get_all_users():
-    # 取得所有使用者
-
-    users = Users.query.all()
-    return jsonify([{'id': user._id, 'username': user.username, 'email': user.email, 'password': user.password} for user in users])
-
-
-@app.route('/user/<int:id>')
-def get_user(id):
-    # 取得一位使用者 by id
-
-    user = Users.query.get_or_404(id)
-    return jsonify([{'id': user._id, 'username': user.username, 'email': user.email, 'password': user.password}])
-
-
-@app.route('/user/<int:id>', methods=['PUT'])
-def update_user(id):
-    # 更新一位使用者
-
-    user = Users.query.get_or_404(id)
-    data = request.json
-    user.username = data['username']
-    user.email = data['email']
-    user.password = data['password']
-    db.session.commit()
-
-    return {"message": "User updated successfully!"}, 200
-
-
 @app.route('/user/<int:id>', methods=['DELETE'])
 def delete_user(id):
     # 刪除使用者
