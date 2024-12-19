@@ -1,2 +1,15 @@
+# DB 連線設定
 SQLALCHEMY_DATABASE_URI : 'mysql+pymysql://db_username:db_password@DB_domain:DB_port/table_name'
 SQLALCHEMY_TRACK_MODIFICATIONS : False
+
+# 郵件 token key 設定
+SECRET_KEY : 'YOUR_SECRET_KEY'
+
+# mailtrap (郵件伺服器)設定
+MAIL_SERVER : 'MAIL_SERVER_BASED_URL'
+MAIL_DEFAULT_SENDER: 'your-email@example.com'
+MAIL_PORT : 2525
+MAIL_USERNAME : 'MAIL_USERNAME'
+MAIL_PASSWORD : 'MAIL_PASSWORD'
+MAIL_USE_TLS : True
+MAIL_USE_SSL : False
