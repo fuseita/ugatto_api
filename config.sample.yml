@@ -13,3 +13,7 @@ MAIL_USERNAME : 'MAIL_USERNAME'
 MAIL_PASSWORD : 'MAIL_PASSWORD'
 MAIL_USE_TLS : True
 MAIL_USE_SSL : False
+
+# jwt 設定
+JWT_SECRET_KEY : 'this-should-be-change'
+JWT_TOKEN_LOCATION : ["headers", "json"]

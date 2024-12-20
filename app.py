@@ -1,5 +1,5 @@
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from flask import Flask, request, session, jsonify
+from sqlalchemy.exc import SQLAlchemyError
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,6 +7,8 @@ from yaml import full_load
 from itsdangerous import URLSafeTimedSerializer as Serializer, SignatureExpired, BadSignature
 from os.path import join
 from os import getcwd
+from flask_jwt_extended import JWTManager, create_access_token,jwt_required, get_jwt_identity
+from datetime import timedelta
 
 
 # DB設定檔引入
@@ -21,6 +23,10 @@ s = Serializer(app.config['SECRET_KEY'])
 # mail STMP 設定檔引入
 mail = Mail(app)
 
+# jwt 設定引入
+jwt = JWTManager()
+jwt.init_app(app)
+
 
 class Users(db.Model):
     _id = db.Column('id', db.Integer, primary_key=True, nullable=True)
@@ -33,8 +39,8 @@ class Users(db.Model):
         self.email = email
 
 
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#    db.create_all()
 
 
 def send_email(token):
@@ -165,7 +171,18 @@ def login():
         return jsonify({'message': 'Incorrect password!'}), 401
 
     # 登入成功邏輯
-    return jsonify({'message': 'Login successful!'}), 200
+    access_token = create_access_token(identity=email,
+                                       expires_delta=timedelta(days=1),
+                                       additional_claims=None)
+    return jsonify({'message': 'Login successful!',
+                    'jwt_token': access_token}), 200
+
+
+@app.route('/jwtTest', methods=['POST'])
+@jwt_required()
+def jwtTest():
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
 
 
 @app.route('/user/<int:id>', methods=['DELETE'])
