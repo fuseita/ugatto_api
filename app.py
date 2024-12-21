@@ -43,7 +43,7 @@ class Users(db.Model):
 #    db.create_all()
 
 
-def send_email(token):
+def send_reset_email(token):
     subject = "驗證你的信箱"
     recipient = "recipient@example.com"
     msg = Message(subject=subject,
@@ -68,6 +68,31 @@ def send_email(token):
         return f'Failed to send email: {str(e)}'
 
 
+def send_forget_email(token):
+    subject = "忘記密碼"
+    recipient = "recipient@example.com"
+    msg = Message(subject=subject,
+                  recipients=[recipient],
+                  sender=app.config['MAIL_DEFAULT_SENDER'])
+    html_content = f"""
+        <h1>您好！</h1>
+        <p>感謝您使用我們的服務，如果您忘記了密碼，請點擊以下連結完成密碼重設：</p>
+        <a href="http://127.0.0.1:5000/forget_password_confirm_email/{token}">驗證連結</a>
+        <br><br>
+        <p>祝好，<br>我們的團隊</p>
+        """
+
+    # 構建郵件
+    msg.html = html_content
+
+    try:
+        # 發送郵件
+        mail.send(msg)
+        return 'Email sent successfully'
+    except Exception as e:
+        return f'Failed to send email: {str(e)}'
+    
+
 @app.route("/")
 def hello():
     return "Hello, Ugatto!"
@@ -81,6 +106,9 @@ def register():
         username = request.json.get('username')
         email = request.json.get('email')
 
+        # 生成安全令牌
+        token = s.dumps(email, salt='email-confirm')
+
         user = Users.query.filter_by(email=email).first()
         # 確認 email 是否已註冊
         if user:
@@ -92,19 +120,16 @@ def register():
             else:
                 user.username = username
                 db.session.commit()
-                send_email(token)
-                return jsonify({"message": "Has send verify mail! Please check your mailbox!"}), 201
-
-        # 生成安全令牌
-        token = s.dumps(email, salt='email-confirm')
+                send_reset_email(token)
+                return jsonify({"message": "Has sent verify mail! Please check your mailbox!"}), 201
 
         # 創建新用戶
         new_user = Users(username=username, email=email)
         db.session.add(new_user)
         db.session.commit()
-        send_email(token)
+        send_reset_email(token)
 
-        return jsonify({"message": "Has send verify mail! Please check your mailbox!"}), 201
+        return jsonify({"message": "Has sent verify mail! Please check your mailbox!"}), 201
 
     return 123
 
@@ -127,8 +152,8 @@ def confirm_email(token):
         return jsonify({"error": "Invalid token. Please check the link."}), 400
 
 
-@app.route('/reset_password', methods=['POST'])
-def reset_password():
+@app.route('/set_password', methods=['POST'])
+def set_password():
     # 新用戶設定密碼
 
     password_token = request.json.get('password_token')
@@ -138,7 +163,7 @@ def reset_password():
         email = s.loads(password_token, salt='password-setting')
         user = Users.query.filter_by(email=email).first()
 
-        # 卻認此帳號是否已完成密碼設定
+        # 確認帳號是否已完成密碼設定
         if user.password != None:
             return jsonify({"error": "The account is existed"}), 400
 
@@ -177,6 +202,63 @@ def login():
     return jsonify({'message': 'Login successful!',
                     'jwt_token': access_token}), 200
 
+
+@app.route('/forget_password', methods=['POST'])
+def forget_password():
+    email = request.json.get('email')
+    user = Users.query.filter_by(email=email).first()
+    
+    # 檢查帳號是否存在
+    if user == None:
+        return jsonify({"error": "The account is not existed"}), 404
+    
+    # 確認帳號是否已完成密碼設定
+    if user.password == None:
+        return jsonify({"error": "The account is not valid"}), 400
+    
+    # 生成安全令牌
+    token = s.dumps(email, salt='forget_password_confirm_email')
+    send_forget_email(token)
+    return jsonify({"message": "Has sent verify mail! Please check your mailbox!"}), 201
+
+
+@app.route('/forget_password_confirm_email/<token>',methods=['POST'])
+def forget_password_confirm_email(token):
+    try:
+        # decode token並驗證
+        email = s.loads(token, salt='forget_password_confirm_email', max_age=3600)
+        new_token = s.dumps(email, salt='password-resetting')
+
+        return jsonify({"message": "Token is valid!", "password_token": new_token}), 200
+    except SignatureExpired:
+        # token過期處理
+        return jsonify({"error": "Token has expired. Please request a new one."}), 400
+    except BadSignature:
+        # 無效token處理
+        return jsonify({"error": "Invalid token. Please check the link."}), 400
+
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    # 用戶重設密碼
+
+    password_token = request.json.get('password_token')
+    password = request.json.get('password')
+
+    try:
+        email = s.loads(password_token, salt='password-resetting')
+        user = Users.query.filter_by(email=email).first()
+        user.password = generate_password_hash(password)
+        db.session.commit()
+
+        return {"message": "User reset password successfully!"}, 201
+    except SignatureExpired:
+        # token過期處理
+        return jsonify({"error": "Token has expired. Please request a new one."}), 400
+    except BadSignature:
+        # 無效token處理
+        return jsonify({"error": "Invalid token. Please check the link."}), 400
+    
 
 @app.route('/jwtTest', methods=['POST'])
 @jwt_required()
